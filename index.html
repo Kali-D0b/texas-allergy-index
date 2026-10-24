@@ -1,0 +1,1348 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Texas Allergy Atlas</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+<link rel="stylesheet" href="https://unpkg.com/maplibre-gl@5.24.0/dist/maplibre-gl.css">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700;800&display=swap">
+
+<style>
+:root {
+  --ink: #8f3f00;
+  --muted: #a65b28;
+  --paper: #fffaf5;
+  --card: #ffffff;
+  --orange: #e87512;
+  --line: #f0d8c4;
+  --accent-light: #fff0e2;
+}
+
+* { box-sizing: border-box; }
+
+html { font-size: 18px; }
+
+body {
+  margin: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: "Playfair Display", "Georgia", "Times New Roman", serif;
+}
+
+header {
+  padding: 40px clamp(18px, 4vw, 52px);
+  background: var(--orange);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  box-shadow: 0 4px 16px rgba(143, 63, 0, 0.2);
+}
+
+.brand { font-size: 2.2rem; font-weight: 800; letter-spacing: -0.03em; }
+.brand span { color: #ffe0bd; }
+.header-note { font-size: 1.05rem; color: #fff0e2; font-style: italic; }
+
+main {
+  max-width: 1440px;
+  margin: auto;
+  padding: 24px clamp(14px, 3vw, 38px) 48px;
+}
+
+.intro {
+  display: flex;
+  justify-content: space-between;
+  align-items: end;
+  gap: 20px;
+  margin-bottom: 22px;
+}
+
+.eyebrow {
+  text-transform: uppercase;
+  letter-spacing: 0.13em;
+  font-size: 0.72rem;
+  font-weight: 800;
+  color: var(--orange);
+}
+
+h1 {
+  font-size: clamp(1.9rem, 4vw, 3.2rem);
+  letter-spacing: -0.055em;
+  margin: 0.35rem 0 0.55rem;
+  line-height: 1.05;
+}
+
+.sub { color: var(--muted); max-width: 690px; line-height: 1.55; margin: 0; }
+
+.profile-pill {
+  border: 1px solid var(--line);
+  background: white;
+  color: var(--ink);
+  border-radius: 999px;
+  padding: 10px 14px;
+  font-size: 0.85rem;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(300px, 0.8fr);
+  gap: 18px;
+}
+
+.card {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  padding: 20px;
+  box-shadow: 0 8px 28px #19392d0a;
+  min-width: 0;
+}
+
+.card-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: start;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.card h2 { font-size: 1.12rem; margin: 0 0 5px; letter-spacing: -0.02em; }
+
+.muted, .foot { color: var(--muted); font-size: 0.88rem; line-height: 1.5; }
+
+.map-wrap { position: relative; }
+
+#map {
+  height: 560px;
+  width: 100%;
+  min-height: 350px;
+  border-radius: 14px;
+  background: #fff0e2;
+  z-index: 1;
+}
+
+.county-name-label {
+  background: none;
+  border: 0;
+  text-align: center;
+  pointer-events: none;
+}
+
+.county-name-label span {
+  display: inline-block;
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid var(--orange);
+  border-radius: 3px;
+  color: var(--ink);
+  font-size: 9px;
+  font-weight: 700;
+  line-height: 1.1;
+  padding: 2px 3px;
+  white-space: nowrap;
+}
+
+.leaflet-tooltip { font-weight: 650; }
+.leaflet-popup-content { line-height: 1.5; }
+
+.legend {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin: 14px 0 4px;
+  font-size: 0.77rem;
+  color: var(--muted);
+}
+
+.legend span { display: flex; align-items: center; gap: 5px; }
+.swatch { width: 12px; height: 12px; border-radius: 4px; display: inline-block; }
+
+.map-error {
+  position: absolute;
+  z-index: 500;
+  left: 12px;
+  right: 12px;
+  bottom: 12px;
+  background: #fff4e8;
+  border: 1px solid #f2c89f;
+  border-radius: 10px;
+  padding: 10px;
+  font-size: 0.8rem;
+  color: #854515;
+}
+
+.notice {
+  background: #fff4e8;
+  border: 1px solid #f2c89f;
+  border-radius: 12px;
+  padding: 12px 14px;
+  font-size: 0.82rem;
+  line-height: 1.5;
+  color: #854515;
+  margin-top: 12px;
+}
+
+.stats { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 16px 0; }
+
+.stat {
+  padding: 15px;
+  border-radius: 14px;
+  background: #fff6ed;
+  border: 1px solid var(--line);
+}
+
+.stat-label { font-size: 0.75rem; color: var(--muted); font-weight: 650; }
+.stat-value { font-size: 2rem; font-weight: 800; letter-spacing: -0.04em; margin-top: 5px; color: var(--orange); }
+.stat small { font-size: 0.78rem; color: var(--muted); }
+
+.weather-icon { font-size: 1.7rem; }
+
+.weather-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 0 14px;
+  border-bottom: 1px solid var(--line);
+}
+
+.temp { font-size: 2.5rem; letter-spacing: -0.06em; font-weight: 800; }
+
+.weather-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  padding-top: 14px;
+}
+
+.weather-grid b { display: block; margin-top: 4px; }
+
+.forecast { display: grid; grid-template-columns: repeat(4, 1fr); gap: 7px; margin-top: 15px; }
+
+.day {
+  padding: 10px 6px;
+  border: 1px solid var(--line);
+  border-radius: 11px;
+  text-align: center;
+}
+
+.day strong, .day span { display: block; }
+.day strong { font-size: 0.76rem; }
+.day .icon { font-size: 1.2rem; margin: 5px 0; }
+.day .dtemp { font-size: 1rem; font-weight: 750; margin: 5px 0; }
+.day span:last-child { font-size: 0.7rem; color: var(--muted); margin-top: 5px; }
+
+.section-title { margin: 23px 0 10px; font-size: 1.15rem; border-bottom: 3px solid var(--orange); display: inline-block; padding-bottom: 3px; }
+.tips { display: grid; gap: 10px; }
+
+.tip {
+  display: flex;
+  gap: 11px;
+  align-items: flex-start;
+  padding: 12px;
+  background: #fff8f1;
+  border-radius: 12px;
+}
+
+.tip-icon { font-size: 1.2rem; }
+.tip b { display: block; font-size: 0.95rem; margin-bottom: 3px; color: var(--orange); }
+.tip p { font-size: 0.81rem; line-height: 1.45; color: var(--muted); margin: 0; }
+
+.foot { font-size: 0.76rem; margin-top: 22px; }
+
+.button {
+  background: var(--orange);
+  color: white;
+  border: 0;
+  border-radius: 10px;
+  padding: 10px 14px;
+  font-weight: 750;
+  cursor: pointer;
+}
+
+.button.secondary { background: var(--accent-light); color: #b65300; }
+.button:disabled { opacity: 0.65; cursor: wait; }
+
+.profile-overlay {
+  position: fixed;
+  inset: 0;
+  background: #102720cc;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 18px;
+  z-index: 9999;
+  backdrop-filter: blur(6px);
+}
+
+.profile-modal {
+  background: white;
+  border-radius: 22px;
+  width: min(100%, 510px);
+  max-height: 94vh;
+  overflow-y: auto;
+  padding: clamp(22px, 4vw, 34px);
+  box-shadow: 0 24px 90px #0003;
+}
+
+.profile-modal h2 { font-size: 1.8rem; letter-spacing: -0.04em; margin: 8px 0; }
+.profile-modal p { color: var(--muted); line-height: 1.5; font-size: 0.9rem; }
+
+.field { display: flex; flex-direction: column; gap: 6px; margin-top: 13px; }
+.field label { font-size: 0.8rem; font-weight: 750; }
+
+.field input, .field select {
+  font: inherit;
+  padding: 12px;
+  border: 1px solid #f0d0b6;
+  border-radius: 10px;
+  background: white;
+  color: var(--ink);
+  min-width: 0;
+}
+
+.field input:focus, .field select:focus {
+  outline: 2px solid #f5b47d;
+  border-color: var(--orange);
+}
+
+.privacy {
+  font-size: 0.76rem !important;
+  background: #fff6ed;
+  padding: 10px;
+  border-radius: 10px;
+}
+
+.error { font-size: 0.8rem; color: #9e342b; margin-top: 8px; display: none; }
+.loading { font-size: 0.82rem; color: var(--muted); padding: 8px 0; }
+
+.chips { display: flex; flex-wrap: wrap; gap: 8px; }
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 12px;
+  border: 1px solid #f0d0b6;
+  border-radius: 999px;
+  cursor: pointer;
+  background: white;
+  font-weight: 500 !important;
+  font-size: 0.85rem !important;
+}
+
+.chip:has(input:checked) { background: var(--accent-light); border-color: var(--orange); }
+
+#alertBanner {
+  display: none;
+  background: #fbe3df;
+  color: #8a2a1c;
+  border: 1px solid #f0c4bc;
+  padding: 18px 22px;
+  border-radius: 12px;
+  margin-bottom: 16px;
+  font-weight: 700;
+  font-size: 1.1rem;
+}
+
+.trigger {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--line);
+  font-size: 0.88rem;
+}
+
+.trigger:last-child { border-bottom: 0; }
+
+.pop {
+  color: var(--orange);
+  font-weight: 800;
+}
+
+.highlight {
+  background: #ffe0bd;
+  padding: 0 4px;
+  border-radius: 4px;
+  font-weight: 700;
+}
+
+@media (max-width: 900px) {
+  .grid { grid-template-columns: 1fr; }
+  .intro { align-items: start; flex-direction: column; }
+  #map { height: 450px; }
+  .header-note { display: none; }
+}
+
+@media (max-width: 500px) {
+  header { padding: 18px; }
+  .card { padding: 14px; }
+  #map { height: 390px; }
+}
+</style>
+</head>
+<body>
+<header>
+  <div class="brand"> Texas <span>Allergy Index</span></div>
+  <div class="header-note">Bringing you personalized allergy and weather information since 2026!</div>
+</header>
+
+<main>
+  <div id="alertBanner" role="alert"></div>
+
+  <section class="intro">
+    <div>
+      <div class="eyebrow">County Allergen Forecast</div>
+      <h1>Find Your <span class="pop">Allergy Risk</span> Today</h1>
+      <p class="sub">Using local weather and allergen data, you can easily find your <span class="highlight">Texas counties</span> to understand your allergen exposures today!</p>
+    </div>
+    <button class="profile-pill" id="profileButton">👤 <span id="profileLabel">Your profile</span> · Edit</button>
+  </section>
+
+  <section class="grid">
+    <article class="card">
+      <div class="card-head">
+        <div>
+          <h2>Texas County Allergy Maps</h2>
+          <div class="muted">Click on a county to find its <span class="pop">estimated allergen levels</span>.</div>
+        </div>
+        <span class="eyebrow">254 counties</span>
+      </div>
+
+      <div id="mapStatus" class="loading">Preparing county map…</div>
+      <div class="map-wrap">
+        <div id="map"></div>
+      </div>
+
+      <div class="legend">
+        <span><i class="swatch" style="background:#d9f0d3"></i>Low</span>
+        <span><i class="swatch" style="background:#a8dba1"></i>Average</span>
+        <span><i class="swatch" style="background:#f3d47b"></i>Above Average</span>
+        <span><i class="swatch" style="background:#e99b65"></i>High</span>
+        <span><i class="swatch" style="background:#c95d56"></i>Very high</span>
+      </div>
+
+      <div class="notice">
+        <b>NOTICE:</b> Allergen information is calculated by <b>wind, rain, PM2.5 and dust</b> counts from Open-Meteo with a pollen <b>estimate</b> of certain allergens. This is just an estimate and should not be taken as a medically certified index. Every county uses data from the closest cities available cities (Closest 20). This is not medical advice, please consult a medical professional or an allergist if you have serious concerns.
+      </div>
+
+      <div class="foot">Shout out and credit to public Texas county GeoJSON for providing county boundries. Counties are colored based on allergen estimates, and may contain some inaccuracy. Generative AI, such as Claude Fable 5.1, were used in the <b>process</b> of developing this app. </div>
+    </article>
+
+    <aside class="card">
+      <div class="card-head">
+        <div>
+          <h2 id="weatherTitle">Local conditions</h2>
+          <div class="muted" id="locationSubtitle">Choose your Texas city.</div>
+        </div>
+        <button class="button secondary" id="refreshWeather">Refresh</button>
+      </div>
+
+      <div id="weatherStatus" class="loading">Loading your profile…</div>
+
+      <div id="weatherContent" hidden>
+        <div class="weather-top">
+          <div>
+            <div class="temp" id="temperature">--°</div>
+            <div class="muted" id="condition">Current Weather Information</div>
+          </div>
+          <div class="weather-icon" id="weatherIcon">🌤️</div>
+        </div>
+
+        <div class="weather-grid">
+          <div><span class="muted">Feels like</span><b id="feels">--°</b></div>
+          <div><span class="muted">Humidity</span><b id="humidity">--%</b></div>
+          <div><span class="muted">Wind</span><b id="wind">-- mph</b></div>
+          <div><span class="muted">Chance of Rain</span><b id="rain">--%</b></div>
+        </div>
+
+        <h3 class="section-title">Future Forecast</h3>
+        <div class="forecast" id="forecast"></div>
+        <div class="foot">Weather data credited to <a href="https://open-meteo.com/" target="_blank" rel="noreferrer">Open-Meteo</a> (CC BY 4.0).</div>
+      </div>
+
+      <h3 class="section-title">Your county-based allergy information</h3>
+      <div class="stats">
+        <div class="stat">
+          <div class="stat-label">Allergy Score in Your County</div>
+          <div class="stat-value" id="allergyScore">—</div>
+          <small id="allergyLevel">Choose a county</small>
+        </div>
+        <div class="stat">
+          <div class="stat-label">Common Allergen This season</div>
+          <div class="stat-value" style="font-size:1.15rem" id="seasonalFocus">—</div>
+          <small>Common allergen this time of year.</small>
+        </div>
+      </div>
+
+      <div class="muted" id="allergyDetail">Click on a county on the map to see its allergy estimates.</div>
+
+      <h3 class="section-title">Your triggers right now</h3>
+      <div id="triggerList" class="muted"></div>
+
+      <h3 class="section-title">Allergy Tips</h3>
+      <div class="tips">
+        <div class="tip">
+          <div class="tip-icon">🪟</div>
+          <div><b>Keep Windows Closed</b><p>By keeping your windows closed, you can easily avoid allergens invading your home.</p></div>
+        </div>
+        <div class="tip">
+          <div class="tip-icon">🚿</div>
+          <div><b>Post-outdoor Showers</b><p>Pollen and other allergens can cling to your hair, skin, and clothes, which is why it's important to shower and change clothes after spending time outside to reduce exposure.</p></div>
+        </div>
+        <div class="tip">
+          <div class="tip-icon">🌅</div>
+          <div><b>Avoid Going Outside On High-Pollen Days</b><p>Check this pollen forecast and other updates on the pollen count in your area, before going outside.</p></div>
+        </div>
+        <div class="tip">
+          <div class="tip-icon">😷</div>
+          <div><b>Nose Protection</b><p>Wearing a mask to protect your nose from pollen and cleaning out your nose with nasal sprays can also help prevent allergens from lingering in your airways.</p></div>
+        </div>
+      </div>
+
+      <p class="foot">This is <span class="pop">NOT</span> medical advice. These are just general tips and suggestions to follow, if you are having a medical emergency because of your allergies, please see a medical professional.</p>
+    </aside>
+  </section>
+
+  <div class="foot">
+    Open data &amp; libraries:
+    <a href="https://open-meteo.com/" target="_blank" rel="noreferrer">Open-Meteo API</a> (weather &amp; air quality) ·
+    Texas county boundaries (TWDB, TxDOT, or <a href="https://github.com/Cincome/tx.geojson" target="_blank" rel="noreferrer">Cincome/tx.geojson</a>) ·
+    <a href="https://leafletjs.com/" target="_blank" rel="noreferrer">Leaflet</a>.
+    Your personal profile is in this browser only.
+  </div>
+</main>
+
+<div class="profile-overlay" id="profileOverlay">
+  <form class="profile-modal" id="profileForm">
+    <div class="eyebrow">Make your allergy index yours!</div>
+    <h2>Where in Texas are you from?</h2>
+    <p>Your city is necessary to understand local weather patterns. Your county is the basis of the map. Your allergies change the index. This profile only stays in your browser, so no worries! All the information we collect is to improve the experience for you.</p>
+
+    <div class="field">
+      <label for="name">What's your name? (optional)</label>
+      <input id="name" maxlength="50" placeholder="Your name">
+    </div>
+
+    <div class="field">
+      <label for="city">Texas city *</label>
+      <input id="city" required placeholder="e.g., Austin" list="texasCities">
+      <datalist id="texasCities">
+        <option>Austin</option><option>Houston</option><option>Dallas</option>
+        <option>Fort Worth</option><option>San Antonio</option><option>El Paso</option>
+        <option>Plano</option><option>Round Rock</option><option>Lakeway</option>
+        <option>Corpus Christi</option><option>Lubbock</option><option>Waco</option>
+        <option>Tyler</option><option>Amarillo</option><option>McAllen</option>
+      </datalist>
+    </div>
+
+    <div class="field">
+      <label for="county">County *</label>
+      <select id="county" required>
+        <option value="">Choose county</option>
+      </select>
+    </div>
+
+    <div class="field" style="margin-top:16px">
+      <label>What are you allergic to? Feel free to choose more than one option! *</label>
+      <div class="chips" id="allergenChips">
+        <label class="chip"><input type="checkbox" value="cedar"> 🌲 Cedar</label>
+        <label class="chip"><input type="checkbox" value="oak"> 🌳 Oak</label>
+        <label class="chip"><input type="checkbox" value="grass"> 🌾 Grass</label>
+        <label class="chip"><input type="checkbox" value="ragweed"> 🌿 Ragweed</label>
+        <label class="chip"><input type="checkbox" value="air"> 🌫️ Dust &amp; air pollution</label>
+      </div>
+    </div>
+
+    <div class="field">
+      <label for="alertLevel">Warnings when the index reaches</label>
+      <select id="alertLevel">
+        <option value="50">Elevated (50+) for sensitive individuals</option>
+        <option value="65" selected>High (65+)</option>
+        <option value="80">Very high (80+)</option>
+      </select>
+    </div>
+
+    <p class="privacy">Your allergies and information is only stored in this browser, nothing is kept on a server.</p>
+    <div class="error" id="profileError"></div>
+    <button class="button" style="width:100%;margin-top:10px;padding:13px" type="submit">Show me my allergy index →</button>
+  </form>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+<script src="https://unpkg.com/maplibre-gl@5.24.0/dist/maplibre-gl.js"></script>
+<script src="https://unpkg.com/@maplibre/maplibre-gl-leaflet@0.1.4/leaflet-maplibre-gl.js"></script>
+<script>
+function el(id) {
+  return document.getElementById(id);
+}
+
+// all TX counties
+const cNames = [
+  "Anderson","Andrews","Angelina","Aransas","Archer","Armstrong","Atascosa","Austin","Bailey","Bandera","Bastrop","Baylor","Bee","Bell","Bexar","Blanco","Borden","Bosque","Bowie","Brazoria","Brazos","Brewster","Briscoe","Brooks","Brown","Burleson","Burnet","Caldwell","Calhoun","Callahan","Cameron","Camp","Carson","Cass","Castro","Chambers","Cherokee","Childress","Clay","Cochran","Coke","Coleman","Collin","Collingsworth","Colorado","Comal","Comanche","Concho","Cooke","Coryell","Cottle","Crane","Crockett","Crosby","Culberson","Dallam","Dallas","Dawson","Deaf Smith","Delta","Denton","DeWitt","Dickens","Dimmit","Donley","Duval","Eastland","Ector","Edwards","Ellis","El Paso","Erath","Falls","Fannin","Fayette","Fisher","Floyd","Foard","Fort Bend","Franklin","Freestone","Frio","Gaines","Galveston","Garza","Gillespie","Glasscock","Goliad","Gonzales","Gray","Grayson","Gregg","Grimes","Guadalupe","Hale","Hall","Hamilton","Hansford","Hardeman","Hardin","Harris","Harrison","Hartley","Haskell","Hays","Hemphill","Henderson","Hidalgo","Hill","Hockley","Hood","Hopkins","Houston","Howard","Hudspeth","Hunt","Hutchinson","Irion","Jack","Jackson","Jasper","Jeff Davis","Jefferson","Jim Hogg","Jim Wells","Johnson","Jones","Karnes","Kaufman","Kendall","Kenedy","Kent","Kerr","Kimble","King","Kinney","Kleberg","Knox","Lamar","Lamb","Lampasas","La Salle","Lavaca","Lee","Leon","Liberty","Limestone","Lipscomb","Live Oak","Llano","Loving","Lubbock","Lynn","Madison","Marion","Martin","Mason","Matagorda","Maverick","McCulloch","McLennan","McMullen","Medina","Menard","Midland","Milam","Mills","Mitchell","Montague","Montgomery","Moore","Morris","Motley","Nacogdoches","Navarro","Newton","Nolan","Nueces","Ochiltree","Oldham","Orange","Palo Pinto","Panola","Parker","Parmer","Pecos","Polk","Potter","Presidio","Rains","Randall","Reagan","Real","Red River","Reeves","Refugio","Roberts","Robertson","Rockwall","Runnels","Rusk","Sabine","San Augustine","San Jacinto","San Patricio","San Saba","Schleicher","Scurry","Shackelford","Shelby","Sherman","Smith","Somervell","Starr","Stephens","Sterling","Stonewall","Sutton","Swisher","Tarrant","Taylor","Terrell","Terry","Throckmorton","Titus","Tom Green","Travis","Trinity","Tyler","Upshur","Upton","Uvalde","Val Verde","Van Zandt","Victoria","Walker","Waller","Ward","Washington","Webb","Wharton","Wheeler","Wichita","Wilbarger","Willacy","Williamson","Wilson","Winkler","Wise","Wood","Yoakum","Young","Zapata","Zavala"
+];
+
+const cities = {
+  "austin": [30.2672, -97.7431],
+  "houston": [29.7604, -95.3698],
+  "dallas": [32.7767, -96.7970],
+  "fort worth": [32.7555, -97.3308],
+  "san antonio": [29.4241, -98.4936],
+  "el paso": [31.7619, -106.4850],
+  "plano": [33.0198, -96.6989],
+  "round rock": [30.5083, -97.6789],
+  "lakeway": [30.3638, -97.9796],
+  "corpus christi": [27.8006, -97.3964],
+  "lubbock": [33.5779, -101.8552],
+  "waco": [31.5493, -97.1467],
+  "tyler": [32.3513, -95.3011],
+  "amarillo": [35.2220, -101.8313],
+  "mcallen": [26.2034, -98.2300],
+  "college station": [30.6280, -96.3344],
+  "galveston": [29.3013, -94.7977],
+  "georgetown": [30.6333, -97.6779],
+  "pflugerville": [30.4394, -97.6200],
+  "katy": [29.7858, -95.8245],
+  "frisco": [33.1507, -96.8236],
+  "irving": [32.8140, -96.9489],
+  "laredo": [27.5036, -99.5076],
+  "midland": [31.9973, -102.0779],
+  "odessa": [31.8457, -102.3676],
+  "brownsville": [25.9017, -97.4975],
+  "beaumont": [30.0802, -94.1266],
+  "abilene": [32.4487, -99.7331],
+  "wichita falls": [33.9137, -98.4934],
+  "new braunfels": [29.7030, -98.1245]
+};
+
+const cCenters = {
+  "Travis": [30.3, -97.8],
+  "Williamson": [30.65, -97.6],
+  "Harris": [29.86, -95.4],
+  "Dallas": [32.77, -96.8],
+  "Tarrant": [32.77, -97.3],
+  "Bexar": [29.45, -98.5],
+  "Denton": [33.2, -97.1],
+  "Collin": [33.2, -96.6],
+  "El Paso": [31.7, -106.3],
+  "Nueces": [27.7, -97.5],
+  "Lubbock": [33.6, -101.8],
+  "McLennan": [31.55, -97.2],
+  "Galveston": [29.3, -94.9],
+  "Brazoria": [29.2, -95.4],
+  "Fort Bend": [29.5, -95.8],
+  "Montgomery": [30.3, -95.5],
+  "Hidalgo": [26.4, -98.2],
+  "Cameron": [26.1, -97.5],
+  "Bell": [31.1, -97.5],
+  "Hays": [30.0, -98.0],
+  "Comal": [29.8, -98.3],
+  "Jefferson": [29.9, -94.1],
+  "Ector": [31.9, -102.5],
+  "Midland": [31.9, -102.0],
+  "Potter": [35.4, -101.9],
+  "Randall": [34.9, -101.9]
+};
+
+// cities w/ live data
+const refCities = [
+  { name: "Austin", lat: 30.27, lon: -97.74 },
+  { name: "Dallas", lat: 32.78, lon: -96.80 },
+  { name: "Houston", lat: 29.76, lon: -95.37 },
+  { name: "San Antonio", lat: 29.42, lon: -98.49 },
+  { name: "El Paso", lat: 31.76, lon: -106.49 },
+  { name: "Lubbock", lat: 33.58, lon: -101.86 },
+  { name: "Amarillo", lat: 35.22, lon: -101.83 },
+  { name: "Corpus Christi", lat: 27.80, lon: -97.40 },
+  { name: "Tyler", lat: 32.35, lon: -95.30 },
+  { name: "Waco", lat: 31.55, lon: -97.15 },
+  { name: "McAllen", lat: 26.20, lon: -98.23 },
+  { name: "Laredo", lat: 27.50, lon: -99.51 },
+  { name: "Midland", lat: 32.00, lon: -102.08 },
+  { name: "Abilene", lat: 32.45, lon: -99.73 },
+  { name: "Beaumont", lat: 30.08, lon: -94.13 },
+  { name: "Wichita Falls", lat: 33.91, lon: -98.49 },
+  { name: "San Angelo", lat: 31.46, lon: -100.44 },
+  { name: "Alpine", lat: 30.36, lon: -103.66 },
+  { name: "Texarkana", lat: 33.43, lon: -94.05 },
+  { name: "Victoria", lat: 28.80, lon: -97.00 }
+];
+
+// pollen strength by month (jan-dec)
+const seasons = {
+  cedar:   [0.9, 1, 0.3, 0, 0, 0, 0, 0, 0, 0, 0.2, 0.7],
+  oak:     [0.1, 0.3, 0.8, 1, 0.4, 0.1, 0, 0, 0.1, 0.2, 0.1, 0],
+  grass:   [0, 0, 0.2, 0.6, 0.9, 1, 1, 1, 0.9, 0.6, 0.2, 0],
+  ragweed: [0, 0, 0, 0, 0, 0, 0.1, 0.5, 1, 1, 0.5, 0.1]
+};
+
+const aNames = {
+  cedar: "🌲 Mountain cedar",
+  oak: "🌳 Oak / trees",
+  grass: "🌾 Grass",
+  ragweed: "🌿 Ragweed",
+  air: "🌫️ Dust & air pollution"
+};
+
+const pTypes = ["cedar", "oak", "grass", "ragweed"];
+
+let profile = null;
+let map = null;
+let cLayer = null;
+let lblLayer = null;
+let selLayer = null;
+let selected = null;
+let ld = [];
+
+function clamp(x) {
+  return Math.max(0, Math.min(1, x));
+}
+
+function esc(text) {
+  return String(text)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+function norm(name) {
+  return String(name || "").replace(/\s+County$/i, "").trim().toLowerCase();
+}
+
+function cName(feature) {
+  const p = feature.properties || {};
+  const name = p.CNTY_NM || p.CNTYNAME || p.COUNTY || p.County || p.county || p.NAME || p.Name || p.name || "";
+  return String(name).replace(/\s+County$/i, "").trim();
+}
+
+function getLevel(score) {
+  if (score < 35) return "Lower";
+  if (score < 50) return "Moderate";
+  if (score < 65) return "Elevated";
+  if (score < 80) return "High";
+  return "Very high";
+}
+
+function getColor(score) {
+  if (score < 35) return "#d9f0d3";
+  if (score < 50) return "#a8dba1";
+  if (score < 65) return "#f3d47b";
+  if (score < 80) return "#e99b65";
+  return "#c95d56";
+}
+
+function getFocus() {
+  const month = new Date().getMonth() + 1;
+  if (month >= 2 && month <= 5) return ["Tree pollen", "Tree pollen is most common in the spring."];
+  if (month >= 9 && month <= 11) return ["Ragweed", "Ragweed is most common in the fall."];
+  if (month === 12 || month === 1) return ["Mountain cedar", "Cedar pollen is most common in the winter."];
+  return ["Grass & mold", "Grass pollen and mold are more prevelant in warmer weather."];
+}
+
+function sWord(level) {
+  if (level >= 0.7) return "Peak";
+  if (level >= 0.4) return "Active";
+  if (level > 0.1) return "Low";
+  return "Off";
+}
+
+function home() {
+  if (profile.coords) return profile.coords;
+  const city = profile.city.trim().toLowerCase();
+  return cities[city] || cCenters[profile.county] || [31, -99];
+}
+
+function save() {
+  try {
+    localStorage.setItem("texasAllergyProfile", JSON.stringify(profile));
+  } catch (e) {}
+}
+
+function myAll() {
+  if (profile && profile.allergens.length > 0) return profile.allergens;
+  return ["cedar", "oak", "grass", "ragweed", "air"];
+}
+
+function fillList(names) {
+  const current = el("county").value;
+  const sorted = names.slice().sort(function (a, b) { return a.localeCompare(b); });
+  let html = '<option value="">Choose county</option>';
+  for (const name of sorted) {
+    html += `<option value="${esc(name)}">${esc(name)} County</option>`;
+  }
+  el("county").innerHTML = html;
+  if (current) el("county").value = current;
+}
+
+// get wx + air data
+async function loadLive() {
+  const lats = refCities.map(function (c) { return c.lat; }).join(",");
+  const lons = refCities.map(function (c) { return c.lon; }).join(",");
+
+  const wxUrl = `https://api.open-meteo.com/v1/forecast?latitude=${lats}&longitude=${lons}&current=temperature_2m,relative_humidity_2m,precipitation,wind_speed_10m&temperature_unit=fahrenheit&wind_speed_unit=mph&timezone=America%2FChicago`;
+  const airUrl = `https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${lats}&longitude=${lons}&current=pm2_5,dust,us_aqi&timezone=America%2FChicago`;
+
+  const wxRes = await fetch(wxUrl);
+  const airRes = await fetch(airUrl);
+  if (!wxRes.ok || !airRes.ok) throw new Error("Live data request failed");
+
+  let weather = await wxRes.json();
+  let air = await airRes.json();
+  if (!Array.isArray(weather)) weather = [weather];
+  if (!Array.isArray(air)) air = [air];
+
+  ld = [];
+  for (let i = 0; i < refCities.length; i++) {
+    ld.push({
+      name: refCities[i].name,
+      lat: refCities[i].lat,
+      lon: refCities[i].lon,
+      humidity: weather[i].current.relative_humidity_2m,
+      rain: weather[i].current.precipitation,
+      wind: weather[i].current.wind_speed_10m,
+      pm25: air[i].current.pm2_5,
+      dust: air[i].current.dust,
+      aqi: air[i].current.us_aqi
+    });
+  }
+}
+
+function nearest(coords) {
+  let best = null;
+  let bestD = Infinity;
+  for (const city of ld) {
+    const dx = (city.lon - coords[1]) * Math.cos(coords[0] * Math.PI / 180);
+    const dy = city.lat - coords[0];
+    const dist = dx * dx + dy * dy;
+    if (dist < bestD) {
+      bestD = dist;
+      best = city;
+    }
+  }
+  return best;
+}
+
+// allergy score 0-100
+function getScore(coords) {
+  if (ld.length === 0) return null;
+
+  const city = nearest(coords);
+  const month = new Date().getMonth();
+  const allergens = myAll();
+  const myP = allergens.filter(function (a) { return pTypes.includes(a); });
+
+  let season = 0;
+  for (const type of myP) {
+    if (seasons[type][month] > season) season = seasons[type][month];
+  }
+
+  let pollen = season * (0.6 + 0.4 * clamp(city.wind / 20));
+  if (city.rain > 0) pollen = pollen * 0.4;
+
+  let pW = 0.65;
+  let pmW = 0.2;
+  let dW = 0.15;
+
+  if (myP.length === 0) {
+    pW = 0;
+    pmW = 0.6;
+    dW = 0.4;
+  } else if (allergens.includes("air")) {
+    pW = 0.5;
+    pmW = 0.3;
+    dW = 0.2;
+  }
+
+  const pm = clamp((city.pm25 || 0) / 35);
+  const dust = clamp((city.dust || 0) / 100);
+  return Math.round((pW * pollen + pmW * pm + dW * dust) * 100);
+}
+
+function val(value) {
+  if (value === null || value === undefined) return "—";
+  return value;
+}
+
+function tipTxt(name, coords) {
+  const score = getScore(coords);
+  if (score === null) return `${esc(name)} County · loading…`;
+  return `${esc(name)} County · index ${score}`;
+}
+
+function popTxt(name, coords) {
+  const score = getScore(coords);
+  if (score === null) return `<strong>${esc(name)} County</strong><br>Live data still loading.`;
+  const city = nearest(coords);
+  return `<strong>${esc(name)} County</strong><br>` +
+    `Estimated allergy index score: ${score}/100 (${getLevel(score)})<br>` +
+    `Wind is ${Math.round(city.wind)} mph and Humidity ${Math.round(city.humidity)}%<br>` +
+    `PM2.5 score is ${val(city.pm25)} micrograms per cubic meter in the air (µg/m³) and AQI (Air Quality Index) is ${val(city.aqi)}<br>` +
+    `<span style="color:#a65b28">Data comes from the closest available city: ${city.name}. Pollen is based off of a seasonal estimate.</span>`;
+}
+
+function updSnap(name, coords) {
+  const focus = getFocus();
+  el("seasonalFocus").textContent = focus[0];
+
+  const score = getScore(coords);
+  if (score === null) {
+    el("allergyScore").textContent = "—";
+    el("allergyLevel").textContent = "Loading live data…";
+    return;
+  }
+
+  el("allergyScore").textContent = score + "/100";
+  el("allergyLevel").textContent = getLevel(score);
+  el("allergyDetail").textContent = `${focus[1]} The index for ${name} County uses  wind, rain and air quality with seasonal pollen estimates to analyze your allergens.`;
+}
+
+function cStyle(feature) {
+  const score = getScore(feature.properties.center);
+  return {
+    color: "#ffffff",
+    weight: 1,
+    fillColor: score === null ? "#cccccc" : getColor(score),
+    fillOpacity: 0.86
+  };
+}
+
+function showTrig() {
+  const box = el("triggerList");
+
+  if (!profile || profile.allergens.length === 0) {
+    box.textContent = "Add your personal allergies in your profile to see them here!";
+    return;
+  }
+
+  const month = new Date().getMonth();
+  let near = null;
+  if (ld.length > 0) near = nearest(home());
+
+  let html = "";
+  for (const key of profile.allergens) {
+    let status;
+    if (key === "air") {
+      status = near ? `PM2.5 ${val(near.pm25)} · AQI ${val(near.aqi)}` : "Loading…";
+    } else {
+      status = sWord(seasons[key][month]) + " season";
+    }
+    html += `<div class="trigger"><span>${aNames[key]}</span><b>${status}</b></div>`;
+  }
+  box.innerHTML = html;
+}
+
+// warning banner
+function checkAlert() {
+  const banner = el("alertBanner");
+  banner.style.display = "none";
+  if (!profile || ld.length === 0) return;
+
+  const score = getScore(home());
+  if (score < profile.alertLevel) return;
+
+  const month = new Date().getMonth();
+  const inSeason = [];
+  for (const key of profile.allergens) {
+    if (pTypes.includes(key) && seasons[key][month] >= 0.4) {
+      inSeason.push(aNames[key].split(" ").slice(1).join(" "));
+    }
+  }
+
+  let message = profile.name ? profile.name + ", your" : "Your";
+  message += ` allergy index in ${profile.city} is ${score}/100 (${getLevel(score)}), above your alert level.`;
+  if (inSeason.length > 0) message += " In season now: " + inSeason.join(", ") + ".";
+
+  banner.textContent = "⚠️ " + message;
+  banner.style.display = "block";
+}
+
+function refreshAll() {
+  if (cLayer) cLayer.setStyle(cStyle);
+  if (selLayer) selLayer.setStyle({ weight: 2.5, color: "#8f3f00" });
+
+  if (selected) {
+    updSnap(selected.name, selected.coords);
+  } else if (profile) {
+    updSnap(profile.county, home());
+  }
+
+  showTrig();
+  checkAlert();
+}
+
+function pick(layer) {
+  if (selLayer) selLayer.setStyle({ weight: 1, color: "#ffffff" });
+
+  selLayer = layer;
+  layer.setStyle({ weight: 2.5, color: "#8f3f00" });
+  layer.bringToFront();
+
+  selected = {
+    name: cName(layer.feature),
+    coords: layer.feature.properties.center
+  };
+  updSnap(selected.name, selected.coords);
+}
+
+function findLayer(name) {
+  let found = null;
+  if (!cLayer) return null;
+  cLayer.eachLayer(function (layer) {
+    if (norm(cName(layer.feature)) === norm(name)) found = layer;
+  });
+  return found;
+}
+
+async function getCounties() {
+  const urls = [
+    "https://services.twdb.texas.gov/arcgis/rest/services/PWS/Texas_Counties_FIPS/FeatureServer/0/query?where=1%3D1&outFields=Name%2CFips&returnGeometry=true&outSR=4326&f=geojson",
+    "https://maps.dot.state.tx.us/arcgis/rest/services/Boundaries/MapServer/1/query?where=1%3D1&outFields=CNTY_NM%2CFIPS_NBR&returnGeometry=true&outSR=4326&f=geojson",
+    "https://raw.githubusercontent.com/Cincome/tx.geojson/master/counties/tx_counties.geojson"
+  ];
+
+  for (const url of urls) {
+    try {
+      const response = await fetch(url);
+      if (!response.ok) continue;
+
+      const data = await response.json();
+      if (!data || !Array.isArray(data.features)) continue;
+
+      data.features = data.features.filter(function (f) {
+        return f && f.geometry && cName(f) !== "";
+      });
+      if (data.features.length >= 200) return data;
+    } catch (e) {}
+  }
+
+  throw new Error("Could not load county boundaries");
+}
+
+function updLabels() {
+  if (!map || !lblLayer) return;
+  if (map.getZoom() >= 7) {
+    if (!map.hasLayer(lblLayer)) lblLayer.addTo(map);
+  } else {
+    if (map.hasLayer(lblLayer)) map.removeLayer(lblLayer);
+  }
+}
+
+// map setup
+async function loadMap() {
+  if (typeof L === "undefined") {
+    el("map").innerHTML = '<p style="padding:18px">The map library did not load. Check your internet connection.</p>';
+    el("mapStatus").textContent = "Map library unavailable.";
+    return;
+  }
+
+  map = L.map("map", { scrollWheelZoom: false, minZoom: 5, maxZoom: 10 }).setView([31.1, -99.3], 6);
+
+  try {
+    L.maplibreGL({
+      style: "https://tiles.openfreemap.org/styles/positron",
+      attribution: '<a href="https://openfreemap.org" target="_blank" rel="noreferrer">OpenFreeMap</a> &copy; <a href="https://openmaptiles.org/" target="_blank" rel="noreferrer">OpenMapTiles</a> Data from <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">OpenStreetMap</a>'
+    }).addTo(map);
+  } catch (e) {
+    console.error("Background map unavailable:", e);
+  }
+
+  map.attributionControl.setPrefix('<a href="https://leafletjs.com" target="_blank" rel="noreferrer">Leaflet</a>');
+  map.on("zoomend", updLabels);
+
+  el("mapStatus").textContent = "Loading Texas county boundaries…";
+
+  let geo;
+  try {
+    geo = await getCounties();
+  } catch (e) {
+    el("mapStatus").textContent = "County boundaries could not load. Check your connection and refresh the page.";
+    el("map").insertAdjacentHTML("beforeend", '<div class="map-error">The map needs an internet connection to load county boundaries.</div>');
+    return;
+  }
+
+  for (const feature of geo.features) {
+    feature.properties = feature.properties || {};
+    const center = L.geoJSON(feature).getBounds().getCenter();
+    feature.properties.center = [center.lat, center.lng];
+  }
+
+  cLayer = L.geoJSON(geo, {
+    style: cStyle,
+    onEachFeature: function (feature, layer) {
+      const name = cName(feature);
+      const center = feature.properties.center;
+      layer.bindTooltip(function () { return tipTxt(name, center); }, { sticky: true });
+      layer.bindPopup(function () { return popTxt(name, center); });
+      layer.on("click", function () { pick(layer); });
+    }
+  }).addTo(map);
+
+  lblLayer = L.layerGroup();
+  for (const feature of geo.features) {
+    L.marker(feature.properties.center, {
+      interactive: false,
+      keyboard: false,
+      icon: L.divIcon({
+        className: "county-name-label",
+        html: `<span>${esc(cName(feature))}</span>`,
+        iconSize: [90, 16],
+        iconAnchor: [45, 8]
+      })
+    }).addTo(lblLayer);
+  }
+  updLabels();
+
+  map.fitBounds(cLayer.getBounds(), { padding: [8, 8] });
+
+  const names = [...new Set(geo.features.map(cName))];
+  fillList(names);
+
+  el("mapStatus").textContent = `Loaded ${geo.features.length} county boundaries. Select a county to explore it.`;
+
+  if (profile) {
+    const layer = findLayer(profile.county);
+    if (layer) pick(layer);
+  }
+
+  setTimeout(function () { map.invalidateSize(); }, 0);
+}
+
+function openProfile() {
+  el("profileOverlay").style.display = "flex";
+
+  if (profile) {
+    el("name").value = profile.name;
+    el("city").value = profile.city;
+    el("county").value = profile.county;
+    el("alertLevel").value = String(profile.alertLevel);
+  }
+
+  const boxes = document.querySelectorAll("#allergenChips input");
+  for (const box of boxes) {
+    box.checked = profile ? profile.allergens.includes(box.value) : false;
+  }
+
+  el("city").focus();
+}
+
+function closeProfile() {
+  el("profileOverlay").style.display = "none";
+}
+
+function wxText(code) {
+  if (code === 0) return ["Clear sky", "☀️"];
+  if (code === 1 || code === 2) return ["Mostly clear", "🌤️"];
+  if (code === 3) return ["Cloudy", "☁️"];
+  if (code === 45 || code === 48) return ["Fog", "🌫️"];
+  if (code >= 51 && code <= 57) return ["Drizzle", "🌦️"];
+  if ((code >= 61 && code <= 67) || (code >= 80 && code <= 82)) return ["Rain showers", "🌧️"];
+  if ((code >= 71 && code <= 77) || code === 85 || code === 86) return ["Snow", "🌨️"];
+  if (code >= 95) return ["Thunderstorms", "⛈️"];
+  return ["Current weather", "🌤️"];
+}
+
+async function cityCoords(city, county) {
+  const key = city.trim().toLowerCase();
+  if (cities[key]) return cities[key];
+
+  try {
+    const response = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(city)}&count=10&language=en&format=json`);
+    if (response.ok) {
+      const result = await response.json();
+      const places = result.results || [];
+      for (const place of places) {
+        if (place.country_code === "US" && String(place.admin1).toLowerCase().includes("texas")) {
+          return [place.latitude, place.longitude];
+        }
+      }
+    }
+  } catch (e) {}
+
+  return cCenters[county] || [31, -99];
+}
+
+// local wx
+async function loadWeather() {
+  if (!profile) {
+    el("weatherStatus").textContent = "Choose your city and county to load weather.";
+    return;
+  }
+
+  el("weatherStatus").textContent = "Loading live weather…";
+  el("weatherContent").hidden = true;
+  el("refreshWeather").disabled = true;
+
+  try {
+    const coords = await cityCoords(profile.city, profile.county);
+
+    const old = profile.coords;
+    if (!old || old[0] !== coords[0] || old[1] !== coords[1]) {
+      profile.coords = coords;
+      save();
+      refreshAll();
+    }
+
+    const url = `https://api.open-meteo.com/v1/forecast?latitude=${coords[0]}&longitude=${coords[1]}` +
+      `&current=temperature_2m,relative_humidity_2m,apparent_temperature,weather_code,wind_speed_10m` +
+      `&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max` +
+      `&temperature_unit=fahrenheit&wind_speed_unit=mph&timezone=America%2FChicago&forecast_days=4`;
+
+    const response = await fetch(url);
+    if (!response.ok) throw new Error("Weather request failed");
+    const data = await response.json();
+
+    const now = data.current;
+    const daily = data.daily;
+    const today = wxText(now.weather_code);
+
+    el("temperature").textContent = Math.round(now.temperature_2m) + "°";
+    el("condition").textContent = today[0];
+    el("weatherIcon").textContent = today[1];
+    el("feels").textContent = Math.round(now.apparent_temperature) + "°";
+    el("humidity").textContent = Math.round(now.relative_humidity_2m) + "%";
+    el("wind").textContent = Math.round(now.wind_speed_10m) + " mph";
+    el("rain").textContent = val(daily.precipitation_probability_max[0]) + "%";
+
+    let html = "";
+    for (let i = 0; i < daily.time.length; i++) {
+      let label = "Today";
+      if (i > 0) {
+        label = new Date(daily.time[i] + "T12:00:00").toLocaleDateString("en-US", { weekday: "short" });
+      }
+      const day = wxText(daily.weather_code[i]);
+      html += `<div class="day">
+        <strong>${label}</strong>
+        <div class="icon">${day[1]}</div>
+        <div class="dtemp">${Math.round(daily.temperature_2m_max[i])}°</div>
+        <span>Low ${Math.round(daily.temperature_2m_min[i])}°</span>
+        <span>${val(daily.precipitation_probability_max[i])}% rain</span>
+      </div>`;
+    }
+    el("forecast").innerHTML = html;
+
+    el("weatherTitle").textContent = "Weather near " + profile.city;
+    el("locationSubtitle").textContent = profile.county + " County, Texas";
+    el("weatherStatus").textContent = "Updated " + new Date().toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+    el("weatherContent").hidden = false;
+  } catch (e) {
+    el("weatherStatus").textContent = "Weather is unavailable right now. Check your connection and try Refresh.";
+    console.error(e);
+  }
+
+  el("refreshWeather").disabled = false;
+}
+
+el("profileButton").addEventListener("click", openProfile);
+el("refreshWeather").addEventListener("click", loadWeather);
+
+// profile form
+el("profileForm").addEventListener("submit", function (event) {
+  event.preventDefault();
+
+  const city = el("city").value.trim();
+  const county = el("county").value;
+  const allergens = [];
+  for (const box of document.querySelectorAll("#allergenChips input:checked")) {
+    allergens.push(box.value);
+  }
+
+  const error = el("profileError");
+  if (!city || !county) {
+    error.textContent = "Please enter a Texas city and select a county.";
+    error.style.display = "block";
+    return;
+  }
+  if (allergens.length === 0) {
+    error.textContent = "Pick at least one allergy so we can personalize your index.";
+    error.style.display = "block";
+    return;
+  }
+  error.style.display = "none";
+
+  let coords = null;
+  if (profile && profile.city.toLowerCase() === city.toLowerCase()) coords = profile.coords;
+
+  profile = {
+    name: el("name").value.trim(),
+    city: city,
+    county: county,
+    allergens: allergens,
+    alertLevel: Number(el("alertLevel").value),
+    coords: coords
+  };
+  save();
+  el("profileLabel").textContent = profile.name || profile.city;
+  closeProfile();
+
+  el("weatherTitle").textContent = "Weather near " + city;
+  el("locationSubtitle").textContent = county + " County, Texas";
+
+  selected = null;
+  const layer = findLayer(county);
+  if (layer) {
+    pick(layer);
+    map.flyTo(layer.feature.properties.center, 7, { duration: 0.7 });
+  }
+
+  refreshAll();
+  loadWeather();
+});
+
+el("profileOverlay").addEventListener("click", function (event) {
+  if (event.target === el("profileOverlay") && profile) closeProfile();
+});
+
+document.addEventListener("keydown", function (event) {
+  if (event.key === "Escape" && profile) closeProfile();
+});
+
+function loadSaved() {
+  try {
+    const saved = JSON.parse(localStorage.getItem("texasAllergyProfile"));
+    if (!saved || typeof saved.city !== "string" || typeof saved.county !== "string") return;
+
+    profile = {
+      name: saved.name || "",
+      city: saved.city,
+      county: saved.county,
+      allergens: Array.isArray(saved.allergens) ? saved.allergens.filter(function (a) { return aNames[a]; }) : [],
+      alertLevel: [50, 65, 80].includes(Number(saved.alertLevel)) ? Number(saved.alertLevel) : 65,
+      coords: Array.isArray(saved.coords) && saved.coords.length === 2 ? saved.coords : null
+    };
+  } catch (e) {
+    profile = null;
+  }
+}
+
+// start
+fillList(cNames);
+loadSaved();
+
+if (profile) {
+  el("profileLabel").textContent = profile.name || profile.city;
+  el("weatherTitle").textContent = "Weather near " + profile.city;
+  el("locationSubtitle").textContent = profile.county + " County, Texas";
+  closeProfile();
+  if (profile.allergens.length === 0) openProfile();
+}
+
+const liveReady = loadLive().catch(function (e) {
+  console.error(e);
+  el("mapStatus").textContent = "Live allergy data is unavailable right now. Try refreshing.";
+});
+
+Promise.all([loadMap(), liveReady]).then(function () {
+  refreshAll();
+  if (profile) loadWeather();
+});
+
+setInterval(function () {
+  loadLive().then(refreshAll).catch(console.error);
+}, 30 * 60 * 1000);
+</script>
+</body>
+</html>
